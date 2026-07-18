@@ -31,16 +31,19 @@ def _cmd_banco(args) -> int:
 
 
 def _cmd_mutar(args) -> int:
-    resultados = mutador.ejecutar()
-    for r in resultados:
-        mark = "KILLED" if r.killed else "SURVIVED"
-        print(f"  [{mark:8}] ({r.kind}) {r.name}")
-    killed, total = mutador.mutation_score(resultados)
-    survivors = [r.name for r in resultados if not r.killed]
-    print(f"mutation score: {killed}/{total}")
+    fault = mutador.behavioural()   # == the red proofs (injected wires)
+    src = mutador.source()          # AST rewrite of guardian_hook.py
+    for label, group in (("fault-injection", fault), ("source-level (AST)", src)):
+        print(f"  {label}:")
+        for r in group:
+            print(f"    [{'KILLED' if r.killed else 'SURVIVED':8}] {r.name}")
+    fk, ft = sum(r.killed for r in fault), len(fault)
+    sk, st = sum(r.killed for r in src), len(src)
+    print(f"fault-injection: {fk}/{ft} | source-level mutation: {sk}/{st}")
+    survivors = [r.name for r in fault + src if not r.killed]
     if survivors:
         print("SURVIVING MUTANTS (bank holes): " + ", ".join(survivors))
-    return 0 if killed == total else 2
+    return 0 if not survivors else 2
 
 
 def _cmd_vigilar(args) -> int:

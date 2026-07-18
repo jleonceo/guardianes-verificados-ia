@@ -24,20 +24,23 @@ def main() -> int:
         print(f"  [{'PASS' if c.passed else 'FAIL'}] {c.name}"
               f"{(' - ' + c.detail) if c.detail and not c.passed else ''}")
 
-    print("== red proofs (each injected bug must be caught) ==")
+    print("== red proofs - fault injection (each injected bug must be caught) ==")
     for name, caught in banco.prove_red():
         if not caught:
             ok = False
         print(f"  [{'PASS' if caught else 'FAIL'}] {name}: bank turned red = {caught}")
 
-    print("== mutation testing (every mutant must be killed) ==")
-    resultados = mutador.ejecutar()
-    for r in resultados:
+    # Source-level mutation (AST) is the evidence BEYOND the fault-injection
+    # proofs above: it rewrites guardian_hook.py and re-execs it. Reported on
+    # its own so the number is not inflated by re-counting the red proofs.
+    print("== source-level mutation (AST rewrite of guardian_hook.py) ==")
+    src_mutants = mutador.source()
+    for r in src_mutants:
         if not r.killed:
             ok = False
-        print(f"  [{'KILLED' if r.killed else 'SURVIVED'}] ({r.kind}) {r.name}")
-    killed, total = mutador.mutation_score(resultados)
-    print(f"  mutation score: {killed}/{total}")
+        print(f"  [{'KILLED' if r.killed else 'SURVIVED'}] {r.name}")
+    killed = sum(1 for r in src_mutants if r.killed)
+    print(f"  source mutation score: {killed}/{len(src_mutants)}")
 
     print("-" * 60)
     print("ALL GREEN" if ok else "FAILURES PRESENT")

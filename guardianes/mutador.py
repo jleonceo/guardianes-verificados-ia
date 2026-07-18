@@ -34,7 +34,8 @@ class MutantResult:
 # --------------------------------------------------------------------------- #
 # behavioural mutants — reuse the bank's injection points
 # --------------------------------------------------------------------------- #
-def _behavioural() -> list[MutantResult]:
+def behavioural() -> list[MutantResult]:
+    """Fault-injection mutants (== banco.prove_red): break one wire, demand red."""
     out = []
     for name, killed in banco.prove_red():
         out.append(MutantResult(name, "behavioural", killed))
@@ -54,10 +55,10 @@ class _MutateExitConstant(ast.NodeTransformer):
     """Mutate the value of one EXIT_* contract-constant assignment (0<->2).
 
     We mutate the guardrail's DECISION logic (the exit-code contract), not the
-    CLI/IO plumbing — mutating `sys.argv[1:]` produces an equivalent mutant
-    (prepending the program name does not flip secret detection) and equivalent
-    mutants are, by definition, unkillable. Standard practice: mutate the code
-    under test.
+    CLI/IO plumbing — mutating `sys.argv[1:]` is not covered by the bank and is
+    out of scope: standard practice is to mutate the code under test (the
+    decision), not argument parsing. (main()'s exit-code translation IS decision
+    logic, so it gets its own mutant below.)
     """
     def __init__(self, target_name: str):
         self.target = target_name
@@ -86,6 +87,20 @@ def _mutar_negando_detector(src: str) -> str:
     return src.replace("return any(p.search", "return not any(p.search", 1)
 
 
+class _MutateMainReturn(ast.NodeTransformer):
+    """Swallow the exit code in main(): `return code` -> `return 0`.
+
+    This is the repo's own headline bug applied to itself. main() translates a
+    verdict into the process exit code; if nothing exercises main(), a mutant
+    that always returns 0 survives silently. So we mutate it AND cover it."""
+    def visit_FunctionDef(self, node):
+        if node.name == "main":
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Return) and stmt.value is not None:
+                    stmt.value = ast.copy_location(ast.Constant(0), stmt.value)
+        return node
+
+
 def _exec_modulo(src: str) -> dict:
     ns: dict = {}
     exec(compile(src, "<mutant>", "exec"), ns)  # noqa: S102 — mutant of our own file
@@ -102,7 +117,19 @@ def _contrato_roto(evaluate) -> bool:
         return True  # a mutant that crashes is also caught
 
 
-def _source() -> list[MutantResult]:
+def _contrato_roto_main(main) -> bool:
+    """main() must translate the verdict into the exit code: violation->2, clean->0.
+    Killed if a mutant (e.g. `return 0`) breaks that end-to-end translation."""
+    try:
+        viol = main(["password=hunter2"]) == 2
+        clean = main(["a normal line"]) == 0
+        return not (viol and clean)
+    except Exception:
+        return True
+
+
+def source() -> list[MutantResult]:
+    """Source-level (AST) mutants: rewrite guardian_hook.py and re-exec it."""
     src = _fuente_guardian()
     out: list[MutantResult] = []
 
@@ -118,11 +145,18 @@ def _source() -> list[MutantResult]:
     ns = _exec_modulo(_mutar_negando_detector(src))
     out.append(MutantResult("source:negate-detector", "source",
                             _contrato_roto(ns["evaluate"])))
+
+    # swallow the exit code in main() — the repo's headline bug, on itself
+    tree = _MutateMainReturn()
+    mutated = ast.fix_missing_locations(tree.visit(ast.parse(src)))
+    ns = _exec_modulo(ast.unparse(mutated))
+    out.append(MutantResult("source:main-return-0", "source",
+                            _contrato_roto_main(ns["main"])))
     return out
 
 
 def ejecutar() -> list[MutantResult]:
-    return _behavioural() + _source()
+    return behavioural() + source()
 
 
 def mutation_score(resultados=None):
