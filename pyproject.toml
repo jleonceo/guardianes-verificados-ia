@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "guardianes-verificados-ia"
+version = "0.2.0"
+description = "Who tests the guardrails? An exit-code contract, banks proven in red, and mutation testing for your guardrails."
+readme = "README.md"
+requires-python = ">=3.9"           # uses ast.unparse
+dependencies = []                    # standard library only, on purpose
+keywords = ["guardrails", "mutation-testing", "hooks", "exit-code", "verification", "ai-agents"]
+
+# NOTE: license pending owner decision (MIT recommended). Add:
+#   license = "MIT"
+# and a LICENSE file before publishing.
+
+[project.scripts]
+guardianes = "guardianes.__main__:main"
+
+[tool.setuptools]
+packages = ["guardianes"]

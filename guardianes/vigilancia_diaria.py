@@ -5,8 +5,6 @@ A guardrail suite only helps if something runs it while nobody is looking and
 makes noise when it turns red. This is the minimal loop: run the bank, drop a
 marker file with the verdict and a timestamp, and exit non-zero (and print a
 notice) when unhealthy — so a scheduler and the next session both find out.
-
-No network, no secrets. Marker path defaults next to this file.
 """
 from __future__ import annotations
 
@@ -15,10 +13,7 @@ import os
 import sys
 from datetime import datetime, timezone
 
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tests"))
-
-import banco_guardianes as banco  # noqa: E402
+from . import banco
 
 EXIT_HEALTHY = 0
 EXIT_UNHEALTHY = 2
