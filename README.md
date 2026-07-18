@@ -45,7 +45,12 @@ It reproduces three incidents, each shown failing (RED) *before* it passes
 | `src/guardian_hook.py` | a guardrail as a hook, with the `exit 0 / exit 2` contract |
 | `src/salud_minima.py` | a health orchestrator whose global verdict has teeth |
 | `src/verificador_guardianes.py` | the meta-level: runs each guardrail against a known violation and demands the contract |
+| `tests/banco_guardianes.py` | a reusable bank **proven in red** — injects each bug and asserts the bank catches it |
+| `src/vigilancia_diaria.py` | the unattended daily watch: run the bank, write a marker, exit non-zero on red |
 | `demo_rojo_verde.py` | the three incidents, red before green |
+| `run_tests.py` | tiny stdlib runner; green bank + red proofs, dogfoods the exit-code contract |
+
+Run the suite: `python run_tests.py` (exits non-zero if any guardrail lost its teeth).
 
 _Standard library only. No network, no secrets, no third-party dependencies._
 
@@ -90,6 +95,6 @@ _Solo biblioteca estándar. Sin red, sin secretos, sin dependencias de terceros.
 ---
 
 <!-- TODO (pendiente antes de publicar / before publishing):
-     - componentes 4 (banco reutilizable) y 5 (vigilancia diaria)
-     - LICENSE (decisión de licencia)
-     - checklist de seguridad completo (grep rutas/credenciales/nombres) -->
+     - LICENSE (decisión de licencia — MIT recomendado, pendiente de OK)
+     - checklist de seguridad completo (grep rutas/credenciales/nombres reales)
+     - decidir fechas/cifras concretas de los incidentes en el README (recomendado sí, verificadas) -->

@@ -15,3 +15,6 @@ Thumbs.db
 # Local only — never publish
 *.log
 .env
+
+# runtime marker written by vigilancia_diaria.py
+ULTIMO_ESTADO.json
