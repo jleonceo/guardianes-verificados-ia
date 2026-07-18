@@ -87,6 +87,10 @@ Todos los comandos respetan el contrato del código de salida, así que un plani
 
 Se apoya en dos cosas que no inventa. Los **hooks deterministas**, es decir, control por código y no por otro modelo de lenguaje. Y el **mutation testing**, la idea de hace medio siglo de que un test que nunca falla no prueba nada. El pariente más cercano valida con un modelo de lenguaje; aquí el validador es código. No reclama ser un descubrimiento: enseña un método.
 
+## La frontera honesta
+
+Esto es un harness mínimo que demuestra un método, no una librería de guardarraíles lista para producción. Los guardianes que trae (buscar un secreto, comparar una cifra) son ilustrativos: sirven para enseñar el contrato y para tener algo que mutar, no para sustituir a tus herramientas de seguridad. Lo que sí es reutilizable es el patrón: el contrato del código de salida, el banco probado en rojo y el motor de mutación. Cámbiale los guardianes por los tuyos.
+
 ## Repos relacionados
 
 Este repo es una pieza de un ecosistema. Cada uno cuenta una historia distinta:
@@ -114,6 +118,8 @@ The reason is simple. The harness around a guardrail does not read its text, it 
 **How it works.** A guardrail takes an input and returns an exit code; the harness reads the code, never the text. And it practices what it preaches: `python -m guardianes mutar` mutates the guardrails and demands the bank kills every mutant, reported in two families so no number is inflated. Fault injection (8) breaks a wire in the bank; source-level (4) rewrites `guardian_hook.py` via `ast` and re-execs it (flip a contract constant, negate the detector, swallow the exit code in `main()`). One mutant is left out on purpose: rewriting CLI arg-slicing is not covered by the bank and is I/O plumbing, not decision logic.
 
 **Usage.** `pip install -e .` (optional), `python demo_rojo_verde.py`, `python run_tests.py`, `python -m guardianes verificar "password=secret"` (exits 2). Every command honours the exit-code contract.
+
+**Honest boundary.** This is a minimal harness that demonstrates a method, not a production guardrail library. The guardrails it ships (secret scan, freshness check) are illustrative: they teach the contract and give something to mutate, not replace your security tooling. What is reusable is the pattern (the exit-code contract, the bank proven in red, the mutation engine). Swap in your own guardrails.
 
 **Prior art.** It stands on deterministic hooks (control by code, not by another language model) and mutation testing (the ~50-year-old idea that a test that never fails proves nothing). The closest relative validates with a language model; here the validator is code. No novelty claimed: it demonstrates a method. See the related repositories above.
 
