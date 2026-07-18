@@ -1,144 +1,123 @@
 # guardianes-verificados-ia
-### Who tests the guardrails? · ¿Quién vigila a los guardianes?
+### ¿Quién vigila a los guardianes?
 
-> A guardrail that has never blocked anything has never been shown to protect
-> anything. This is a tiny, dependency-free harness that puts **guardrails
-> themselves** under test — an exit-code contract, banks proven in red, and
-> **mutation testing** — with **five real incidents** you can reproduce.
->
-> Un guardarraíl que nunca ha bloqueado nada no ha demostrado que proteja nada.
-> Este es un harness mínimo, sin dependencias, que pone a examen **a los propios
-> guardianes**: un contrato de códigos de salida, bancos probados en rojo y
-> **mutation testing**, con **cinco incidentes reales** que puedes reproducir.
+Casi todas las herramientas de "guardarraíles" para IA comprueban lo que sale del modelo. Esta comprueba **los guardarraíles**. Está un nivel por encima: si un detector encuentra un problema pero no lo bloquea, no protege nada, por muy bien que lo detecte.
+
+La razón es sencilla. El sistema que rodea a un guardián no lee su texto, lee su **código de salida**. Un `0` quiere decir "limpio, pasa". Un `2` quiere decir "hay una violación, bloquéalo". Un guardián que detecta la violación pero se olvida de devolver el `2` canta verde estando roto. Y nadie se entera.
+
+## Qué resuelve
+
+Pone a examen a los propios guardianes. No mira si tu modelo se porta bien: mira si tu guardián, cuando le pones delante una violación de verdad, la bloquea de verdad. Y lo comprueba de la única forma que vale: rompiéndolo a propósito y viendo si el banco lo caza. Un guardián que no ha bloqueado nada nunca no ha demostrado que proteja nada.
+
+Todo con la biblioteca estándar de Python. Sin dependencias, sin red, sin secretos.
+
+## El hallazgo honesto, que es lo que de verdad importa
+
+Lo construí y lo di por bueno con el banco en verde. Luego una comprobación independiente encontró un agujero, y resultó ser el mejor argumento del repo entero.
+
+`main()` es la función que convierte el veredicto en código de salida. No la probaba nada. Un mutante que ahí devuelve `0` en lugar del código real sobrevivía sin que saltara ninguna alarma. O sea: el fallo exacto que este repo enseña a evitar se me había colado dentro del propio repo. Lo tapé con un caso de banco que ejecuta `main()` de punta a punta y un mutante que lo ataca.
+
+Ojo: eso no es el repo fallando, es el repo funcionando. Un banco que nunca falla no demuestra nada. Este falla cuando toca.
+
+## El ejemplo: cinco incidentes, en rojo antes que en verde
 
 ```
-pip install -e .           # optional; the repo also runs with plain `python`
-python demo_rojo_verde.py  # the five incidents, red before green
-python run_tests.py        # bank + red proofs + mutation score
-python -m guardianes mutar # mutation testing, straight from the CLI
+python demo_rojo_verde.py
 ```
 
----
+Reproduce cinco fallos reales. Cada uno se enseña primero fallando (ROJO) y luego arreglado (VERDE):
 
-## EN
+| # | El incidente | El fallo | El arreglo |
+|---|---|---|---|
+| 1 | El guardián que no frenaba | un envoltorio de shell se tragaba el código de salida: una violación real se reportaba como "pasada" | comprobar el guardián de punta a punta, envoltorio incluido |
+| 2 | El veredicto sin dientes | una comprobación de salud imprimía `ENFERMO` y aun así salía con `0` | atar el veredicto al código de salida |
+| 3 | El banco que mentía | los casos de prueba, copiados de las reglas del propio detector, quedaban en verde con el agujero abierto | añadir casos independientes |
+| 4 | El guardián en la puerta equivocada | un hook vigilaba un nombre, pero al recurso se llegaba por otra puerta ("contamos cinco, había seis") | vigilar el recurso, no el nombre |
+| 5 | El veredicto verde pero ciego | una comprobación de frescura comparaba un valor consigo mismo: verde por construcción | comparar contra una fuente independiente |
 
-Most "guardrail" projects check the *output* of a model. This one checks the
-**guardrails**. The idea is one level up (meta): a detector that can only *print*
-"violation" but always exits 0 protects nothing, because the harness around it
-reads the **exit code**, not the prose.
+Los incidentes 1, 2 y 5 son versiones en miniatura de fallos con fecha de un sistema real. El 4 es la forma de un hallazgo de seguridad real. Los nombres y los datos son sintéticos.
 
-### The contract
+## Cómo funciona por dentro
+
+**El contrato.** Un guardián recibe una entrada y devuelve un código de salida. El harness (o la CI) lee ese código, nunca el texto.
 
 ```mermaid
 flowchart LR
-    I[input] --> G{guardrail}
-    G -- clean --> Z["exit 0 · let through"]
-    G -- violation --> T["exit 2 · BLOCK"]
-    Z --> H[harness / CI reads the exit code]
+    I[entrada] --> G{guardián}
+    G -- limpio --> Z["exit 0 · pasa"]
+    G -- violación --> T["exit 2 · BLOQUEA"]
+    Z --> H[el harness / la CI lee el código de salida]
     T --> H
 ```
 
-The harness trusts the **exit code**, so a guardrail that forgets to translate a
-violation into a non-zero exit is invisibly broken. This repo makes that
-failure — and four more — reproducible.
-
-### The five incidents (`demo_rojo_verde.py`)
-
-Each is shown failing (**RED**) *before* it passes (**GREEN**):
-
-| # | Incident | The bug | The fix |
-|---|----------|---------|---------|
-| 1 | The guardrail that never braked | a shell wrapper swallowed the child exit code → a real violation reported as "passed" | check the guardrail **end to end**, wrapper included |
-| 2 | The toothless verdict | health check printed `ENFERMO` and still exited 0 | wire the verdict to the **exit code** |
-| 3 | The bank that lied | test cases lifted from the detector's own rules stay green while its hole stays open | add **independent** cases |
-| 4 | The guardrail on the wrong door | a hook guarded a *name/matcher*, but the resource had another door ("we counted 5, there were 6") | guard the **canonical resource**, not the name |
-| 5 | The green-but-blind verdict | a freshness check compared a value against a copy of itself → green by construction | compare against an **independent** source |
-
-Incidents 1, 2 and 5 are miniatures of failures with dates in a real system;
-4 is the shape of a real security finding. Names and data are synthetic.
-
-### Mutation testing — practice what we preach
-
-A test suite that survives a deliberately broken program proves nothing
-(Lipton 1971; `pitest`). So this repo doesn't just *say* the bank has teeth — it
-**mutates the guardrails and demands the bank kills every mutant**:
+**Mutation testing: que practique lo que predica.** Un banco de pruebas que sobrevive a un programa roto a propósito no prueba nada; es la idea del *mutation testing*, que tiene medio siglo. Así que el repo no se limita a decir que su banco tiene dientes: muta los guardianes y exige que el banco mate a cada mutante. Un mutante que sobrevive es un agujero del banco, y se reporta.
 
 ```
-python -m guardianes mutar     # → fault-injection 8/8 · source-level 4/4
+python -m guardianes mutar     # → fault-injection 8/8 | source-level 4/4
 ```
 
-Two operator families, **reported separately so neither number is inflated**:
+Hay dos familias, y se cuentan por separado para que ningún número quede inflado. La primera (8) inyecta un fallo en un cable del banco: un guardián ciego, un veredicto sin dientes, la puerta equivocada. La segunda (4) es *mutation testing* de fuente de verdad: reescribe `guardian_hook.py` con el módulo `ast` y lo vuelve a ejecutar (cambia una constante del contrato, niega el detector, se traga el código de salida en `main()`). Un mutante se queda fuera a propósito: reescribir el troceo de argumentos de la línea de comandos no lo cubre el banco, y es fontanería de entrada/salida, no la lógica de decisión.
 
-- **fault-injection (8)** — break one wire (blind guardrail, toothless verdict,
-  wrong-door guard, self-comparing freshness…). These *are* the red proofs
-  above, run as mutants.
-- **source-level (4)** — actually rewrite `guardian_hook.py` via `ast` and
-  re-exec it: flip each exit-code constant, negate the detector, and **swallow
-  the exit code in `main()`** — the repo's own headline bug, applied to itself,
-  so the function that *materialises* the contract is mutated and covered.
+**Las piezas** (cada una, una idea):
 
-A **surviving mutant is a hole in the bank**, reported loudly. One source mutant
-is deliberately left out: rewriting the CLI arg-slice (`sys.argv[1:]`) is **not
-covered by the bank** and is out of scope — what's under test is the guardrail's
-decision logic, not its I/O plumbing. (Said plainly, not dressed up as
-"equivalent".)
+| Fichero | Qué hace |
+|---|---|
+| `guardianes/guardian_hook.py` | un guardián como hook, con el contrato `exit 0 / exit 2` |
+| `guardianes/salud_minima.py` | un orquestador de salud cuyo veredicto global tiene dientes |
+| `guardianes/verificador_guardianes.py` | el nivel meta: exige el contrato de punta a punta |
+| `guardianes/guardian_recurso.py` | vigilar el recurso, no el nombre |
+| `guardianes/guardian_frescura.py` | comparar contra una fuente independiente |
+| `guardianes/banco.py` | un banco reutilizable, probado en rojo (cada cable es un punto de inyección) |
+| `guardianes/mutador.py` | mutation testing (de comportamiento y de fuente con `ast`) |
+| `guardianes/__main__.py` | la línea de comandos: `verificar · banco · mutar · vigilar` |
 
-### What's inside
+## Cómo se usa
 
-| File | Role |
-|------|------|
-| `guardianes/guardian_hook.py` | a guardrail as a hook, `exit 0 / exit 2` contract |
-| `guardianes/salud_minima.py` | a health orchestrator whose global verdict has teeth |
-| `guardianes/verificador_guardianes.py` | the meta-level: demands the contract end to end |
-| `guardianes/guardian_recurso.py` | guard the resource, not the name |
-| `guardianes/guardian_frescura.py` | compare against an independent source |
-| `guardianes/banco.py` | a reusable bank, **proven in red** (every wire is an injection point) |
-| `guardianes/mutador.py` | mutation testing (behavioural + AST source-level) |
-| `guardianes/vigilancia_diaria.py` | the unattended daily watch (marker + notice) |
-| `guardianes/__main__.py` | CLI: `verificar · banco · mutar · vigilar` |
-| `demo_rojo_verde.py` | the five incidents, red before green |
-| `run_tests.py` / `tests/` | bank + red proofs + mutation score |
+```
+pip install -e .            # opcional; también se ejecuta con python a secas
+python demo_rojo_verde.py   # los cinco incidentes, rojo antes que verde
+python run_tests.py         # banco + pruebas en rojo + score de mutación
+python -m guardianes verificar "password=secreto"   # sale con 2 (bloquea)
+python -m guardianes verificar "una linea normal"    # sale con 0 (pasa)
+```
 
-_Standard library only. No network, no secrets, no third-party dependencies._
+Todos los comandos respetan el contrato del código de salida, así que un planificador o la CI leen el resultado del código, no del texto.
 
-### Prior art / genealogy
+## Lo que ya había (y de dónde viene)
 
-Stands on **deterministic hooks** (control by code, not by an LLM) and
-**mutation testing** — the ~50-year-old idea that *a test that never fails proves
-nothing*. The closest relatives validate with an LLM; here the validator is plain
-code. This does not claim novelty; it demonstrates a method, honestly framed.
+Se apoya en dos cosas que no inventa. Los **hooks deterministas**, es decir, control por código y no por otro modelo de lenguaje. Y el **mutation testing**, la idea de hace medio siglo de que un test que nunca falla no prueba nada. El pariente más cercano valida con un modelo de lenguaje; aquí el validador es código. No reclama ser un descubrimiento: enseña un método.
+
+## Repos relacionados
+
+Este repo es una pieza de un ecosistema. Cada uno cuenta una historia distinta:
+
+- [`verificacion-determinista-ia`](https://github.com/jleonceo/verificacion-determinista-ia): código que recomprueba la coherencia de los **datos** sin IA. La frontera con este repo: aquel verifica los datos, este verifica a los **guardianes**.
+- [`pii-output-gate`](https://github.com/jleonceo/pii-output-gate): una puerta de salida que bloquea el texto con datos personales. Un guardián concreto; aquí está el harness que examina a guardianes como ese.
+- [`orquestacion-enjambres-ia`](https://github.com/jleonceo/orquestacion-enjambres-ia): cómo un sistema con muchos agentes decide a cuál mandar cada petición.
+- [`agent-memory-governance`](https://github.com/jleonceo/agent-memory-governance): que la memoria de un agente no se vuelva un vertedero.
+- [`gobernanza-skills-analiticas`](https://github.com/jleonceo/gobernanza-skills-analiticas): el método de golden sets y puertas de no-regresión.
 
 ---
 
-## ES
+## EN · Who tests the guardrails?
 
-La mayoría de los proyectos de "guardarraíles" comprueban la *salida* de un
-modelo. Este comprueba **a los guardarraíles**. La idea está un nivel por encima:
-un detector que solo *imprime* "violación" pero siempre sale con código 0 no
-protege nada, porque el harness que lo rodea lee el **código de salida**, no el
-texto.
+Most AI "guardrail" tools check what comes *out* of the model. This one checks the **guardrails**. It sits one level up: if a detector finds a problem but does not block it, it protects nothing, however well it detects.
 
-**El contrato:** `exit 0` = limpio, pasa · `exit 2` = violación, BLOQUEA. El
-harness confía en el código de salida; un guardián que olvida traducir la
-violación a un código distinto de 0 está roto sin que se note.
+The reason is simple. The harness around a guardrail does not read its text, it reads its **exit code**. `0` means "clean, let it through". `2` means "there is a violation, block it". A guardrail that detects the violation but forgets to return the `2` reports green while broken. And nobody finds out.
 
-**Los cinco incidentes** (`python demo_rojo_verde.py`), cada uno en ROJO antes
-que VERDE: (1) el envoltorio que se traga el exit code · (2) el veredicto que
-imprime ENFERMO y sale 0 · (3) el banco con casos copiados de las propias reglas
-(verde con el agujero abierto) · (4) el guardián en la puerta equivocada
-("contamos 5 puertas, había 6") · (5) el veredicto verde-pero-ciego que se
-compara consigo mismo.
+**What it solves.** It puts the guardrails themselves under test. Not whether your model behaves, but whether your guardrail, handed a real violation, actually blocks it. It proves it the only way that counts: by breaking it on purpose and checking the bank catches it. Standard library only. No dependencies, no network, no secrets.
 
-**Mutation testing** (`python -m guardianes mutar` → fault-injection 8/8 ·
-source-level 4/4): el repo no *dice* que el banco tiene dientes, lo **demuestra**
-mutando los guardianes y exigiendo que el banco mate a cada mutante. Los mutantes
-de fuente reescriben `guardian_hook.py` de verdad (vía `ast`), incluido tragarse
-el exit code en `main()` — el propio titular del repo, aplicado a sí mismo. Un
-mutante superviviente es un agujero del banco, y se reporta. Practica lo que predica.
+**The honest finding, which is what matters.** I built it and called it done with the bank green. Then an independent check found a hole, and it turned out to be the best argument in the whole repo. `main()` is the function that turns the verdict into the exit code, and nothing tested it. A mutant that returns `0` there survived silently: the exact bug this repo teaches you to avoid had slipped into the repo itself. I closed it, with a bank case that runs `main()` end to end and a mutant that attacks it. That is not the repo failing, it is the repo working. A bank that never fails proves nothing.
 
-_Solo biblioteca estándar. Sin red, sin secretos, sin dependencias._
+**The five incidents** (`python demo_rojo_verde.py`), each shown failing (RED) before it passes (GREEN): (1) a shell wrapper swallowed the exit code; (2) a health check printed `ENFERMO` and still exited 0; (3) test cases lifted from the detector's own rules stayed green with the hole open; (4) a hook guarded a name, but the resource had another door ("we counted five, there were six"); (5) a freshness check compared a value against itself. Incidents 1, 2 and 5 are miniatures of dated failures in a real system; 4 is the shape of a real security finding. Names and data are synthetic.
 
-<!-- TODO antes de publicar / before publishing:
-     - LICENSE (MIT recomendado, pendiente de OK) + campo license en pyproject
-     - checklist de seguridad (grep rutas/credenciales/nombres reales)
-     - decidir si se nombran fechas concretas de los incidentes (recomendado sí, verificadas) -->
+**How it works.** A guardrail takes an input and returns an exit code; the harness reads the code, never the text. And it practices what it preaches: `python -m guardianes mutar` mutates the guardrails and demands the bank kills every mutant, reported in two families so no number is inflated. Fault injection (8) breaks a wire in the bank; source-level (4) rewrites `guardian_hook.py` via `ast` and re-execs it (flip a contract constant, negate the detector, swallow the exit code in `main()`). One mutant is left out on purpose: rewriting CLI arg-slicing is not covered by the bank and is I/O plumbing, not decision logic.
+
+**Usage.** `pip install -e .` (optional), `python demo_rojo_verde.py`, `python run_tests.py`, `python -m guardianes verificar "password=secret"` (exits 2). Every command honours the exit-code contract.
+
+**Prior art.** It stands on deterministic hooks (control by code, not by another language model) and mutation testing (the ~50-year-old idea that a test that never fails proves nothing). The closest relative validates with a language model; here the validator is code. No novelty claimed: it demonstrates a method. See the related repositories above.
+
+<!-- Pendiente antes de publicar / before publishing:
+     - LICENSE (MIT recomendado, pendiente de OK de Juan) + campo license en pyproject.toml
+     - OK de Juan repo por repo; el "About" lo pone él a mano
+     - el email del autor quedará visible en el historial de commits al publicar -->
