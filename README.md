@@ -124,6 +124,5 @@ The reason is simple. The harness around a guardrail does not read its text, it 
 **Prior art.** It stands on deterministic hooks (control by code, not by another language model) and mutation testing (the ~50-year-old idea that a test that never fails proves nothing). The closest relative validates with a language model; here the validator is code. No novelty claimed: it demonstrates a method. See the related repositories above.
 
 <!-- Pendiente antes de publicar / before publishing:
-     - LICENSE (MIT recomendado, pendiente de OK de Juan) + campo license en pyproject.toml
-     - OK de Juan repo por repo; el "About" lo pone él a mano
-     - el email del autor quedará visible en el historial de commits al publicar -->
+     - OK de Juan repo por repo; el "About" (descripcion) lo pone el a mano
+     - el email del autor quedara visible en el historial de commits al publicar -->
