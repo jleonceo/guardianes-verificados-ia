@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # No dependencies to install — standard library only, on purpose.
+      - name: Bank + red proofs + mutation score
+        run: python run_tests.py
+      - name: The five incidents (red before green)
+        run: python demo_rojo_verde.py
+      - name: CLI honours the exit-code contract
+        run: |
+          python -m guardianes banco
+          python -m guardianes mutar
