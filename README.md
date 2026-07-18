@@ -19,7 +19,7 @@ Lo construí y lo di por bueno con el banco en verde. Luego una comprobación in
 
 Un banco que nunca falla no demuestra nada; este falló cuando tenía que fallar.
 
-## El ejemplo: cinco incidentes, en rojo antes que en verde
+## El ejemplo: cinco incidentes en rojo antes que en verde
 
 ```
 python demo_rojo_verde.py
@@ -75,7 +75,7 @@ Hay dos familias y se cuentan por separado para que ningún número quede inflad
 
 ```
 pip install -e .            # opcional; también se ejecuta con python a secas
-python demo_rojo_verde.py   # los cinco incidentes, rojo antes que verde
+python demo_rojo_verde.py   # los cinco incidentes en rojo antes que verde
 python run_tests.py         # banco + pruebas en rojo + score de mutación
 python -m guardianes verificar "password=secreto"   # sale con 2 (bloquea)
 python -m guardianes verificar "una linea normal"    # sale con 0 (pasa)
@@ -89,7 +89,7 @@ Se apoya en dos cosas que no inventa. Los **hooks deterministas** controlan por 
 
 ## Hasta dónde llega
 
-Esto es un harness mínimo que demuestra un método; no pretende ser una librería de guardarraíles lista para producción. Los guardianes que trae (buscar un secreto, comparar una cifra) son ilustrativos: sirven para enseñar el contrato y para tener algo que mutar, y no sustituyen a tus herramientas de seguridad. Lo que sí es reutilizable es el patrón: el contrato del código de salida, el banco probado en rojo y el motor de mutación. Cámbiale los guardianes por los tuyos.
+Esto es un harness mínimo que demuestra un método; no pretende ser una librería de guardarraíles lista para producción. Los guardianes que trae (buscar un secreto, comparar una cifra) son ilustrativos: enseñan el contrato y dan algo que mutar. No sustituyen a tus herramientas de seguridad. Lo que sí es reutilizable es el patrón: el contrato del código de salida, el banco probado en rojo y el motor de mutación. Cámbiale los guardianes por los tuyos.
 
 ## Repos relacionados
 
