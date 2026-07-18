@@ -9,6 +9,7 @@ demand has no demonstrated teeth.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass
 
@@ -36,9 +37,10 @@ def _buggy_wrapper(text: str) -> int:
 
 
 def run_bank(*, salud_teeth: bool = True, guardian_patterns=gh.SECRET_PATTERNS_V2,
-             runner=_bare_runner) -> list[Case]:
-    """Green when everything is wired correctly. Parameters let the caller
-    inject each known bug to prove the bank turns red."""
+             runner=_bare_runner, veredicto_fn=sm.veredicto_global) -> list[Case]:
+    """Green when everything is wired correctly. Every parameter is an
+    injection point so `prove_red()` can mutate one wire at a time and assert
+    the corresponding case turns red."""
     cases: list[Case] = []
 
     def check(name, cond, detail=""):
@@ -53,13 +55,13 @@ def run_bank(*, salud_teeth: bool = True, guardian_patterns=gh.SECRET_PATTERNS_V
     check("guardian_catches_passwd_hole",
           gh.evaluate("passwd=hunter2", guardian_patterns) == gh.EXIT_VIOLATION)
 
-    # health verdict has teeth
+    # health verdict has teeth (verbose off: this is a library call)
     failing = [sm.Check("cuadre", True), sm.Check("banco", False)]
     check("salud_enfermo_exits_2",
-          sm.run(failing, with_teeth=salud_teeth) == sm.EXIT_UNHEALTHY)
+          sm.run(failing, with_teeth=salud_teeth, verbose=False) == sm.EXIT_UNHEALTHY)
     # non-vacuity: empty checks must not read as healthy
     check("salud_empty_is_enfermo",
-          sm.veredicto_global([]) == sm.ENFERMO)
+          veredicto_fn([]) == sm.ENFERMO)
 
     # verifier catches a swallowed exit code end to end
     res = vg.verify_contract("secret-scan", runner,
@@ -69,23 +71,35 @@ def run_bank(*, salud_teeth: bool = True, guardian_patterns=gh.SECRET_PATTERNS_V
     return cases
 
 
+# --- mutant guardrails / verdicts, used only to prove the bank has teeth --- #
+_MATCH_EVERYTHING = [re.compile(r".")]          # paranoid: flags even clean text
+_MATCH_NOTHING: list = []                       # blind: flags nothing
+
+
+def _veredicto_ciego(checks):
+    """Broken verdict: reports SANO on an empty check list (vacuity bug)."""
+    return sm.SANO if not checks else sm.veredicto_global(checks)
+
+
 def prove_red() -> list[tuple[str, bool]]:
-    """Inject each bug and assert the bank catches it (goes red)."""
-    proofs = []
+    """Inject one bug per case and assert the bank catches it (that case goes
+    red). Covers ALL six cases — a suite you cannot make fail on demand has no
+    demonstrated teeth."""
+    def caught(injection_kwargs, case_name):
+        red = run_bank(**injection_kwargs)
+        return any(not c.passed and c.name == case_name for c in red)
 
-    # bug 1: swallowed exit code -> verificador case must fail
-    red = run_bank(runner=_buggy_wrapper)
-    proofs.append(("inject swallowed-exit-code",
-                   any(not c.passed and c.name == "verificador_contract_end_to_end" for c in red)))
-
-    # bug 2: toothless salud -> salud case must fail
-    red = run_bank(salud_teeth=False)
-    proofs.append(("inject toothless-verdict",
-                   any(not c.passed and c.name == "salud_enfermo_exits_2" for c in red)))
-
-    # bug 3: holed guardrail (v1) -> the passwd hole case must fail
-    red = run_bank(guardian_patterns=gh.SECRET_PATTERNS_V1)
-    proofs.append(("inject holed-guardrail",
-                   any(not c.passed and c.name == "guardian_catches_passwd_hole" for c in red)))
-
-    return proofs
+    return [
+        ("inject swallowed-exit-code",
+         caught({"runner": _buggy_wrapper}, "verificador_contract_end_to_end")),
+        ("inject toothless-verdict",
+         caught({"salud_teeth": False}, "salud_enfermo_exits_2")),
+        ("inject holed-guardrail",
+         caught({"guardian_patterns": gh.SECRET_PATTERNS_V1}, "guardian_catches_passwd_hole")),
+        ("inject blind-guardrail",
+         caught({"guardian_patterns": _MATCH_NOTHING}, "guardian_blocks_violation")),
+        ("inject paranoid-guardrail",
+         caught({"guardian_patterns": _MATCH_EVERYTHING}, "guardian_allows_clean")),
+        ("inject vacuous-verdict",
+         caught({"veredicto_fn": _veredicto_ciego}, "salud_empty_is_enfermo")),
+    ]
