@@ -39,14 +39,17 @@ def veredicto_global(checks: list[Check]) -> str:
     return SANO if all(c.passed for c in checks) else ENFERMO
 
 
-def run(checks: list[Check], *, with_teeth: bool = True) -> int:
+def run(checks: list[Check], *, with_teeth: bool = True, verbose: bool = True) -> int:
     """Print the verdict and return the exit code.
 
     `with_teeth=False` reproduces the toothless bug: it prints ENFERMO but
     returns 0 anyway. The bank pins that this must be exit 2.
+    `verbose=False` silences the printed line when called as a library (e.g.
+    from the bank), so it does not add stray output to another command.
     """
     verdict = veredicto_global(checks)
-    sys.stdout.write(f"veredicto_global={verdict}\n")
+    if verbose:
+        sys.stdout.write(f"veredicto_global={verdict}\n")
     if verdict == ENFERMO:
         return EXIT_UNHEALTHY if with_teeth else EXIT_HEALTHY
     return EXIT_HEALTHY
