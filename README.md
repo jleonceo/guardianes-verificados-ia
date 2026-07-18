@@ -64,16 +64,24 @@ A test suite that survives a deliberately broken program proves nothing
 **mutates the guardrails and demands the bank kills every mutant**:
 
 ```
-python -m guardianes mutar     # → mutation score: 11/11
+python -m guardianes mutar     # → fault-injection 8/8 · source-level 4/4
 ```
 
-Two operator families: **behavioural** (inject a broken wire — blind guardrail,
-toothless verdict, wrong-door guard, self-comparing freshness…) and
-**source-level** (rewrite `guardian_hook.py` via `ast`: flip an exit-code
-constant, negate the detector). A **surviving mutant is a hole in the bank**, and
-it is reported loudly. (Equivalent mutants — e.g. mutating CLI arg-slicing, which
-cannot change a verdict — are deliberately out of scope; that is standard
-practice, not score-gaming.)
+Two operator families, **reported separately so neither number is inflated**:
+
+- **fault-injection (8)** — break one wire (blind guardrail, toothless verdict,
+  wrong-door guard, self-comparing freshness…). These *are* the red proofs
+  above, run as mutants.
+- **source-level (4)** — actually rewrite `guardian_hook.py` via `ast` and
+  re-exec it: flip each exit-code constant, negate the detector, and **swallow
+  the exit code in `main()`** — the repo's own headline bug, applied to itself,
+  so the function that *materialises* the contract is mutated and covered.
+
+A **surviving mutant is a hole in the bank**, reported loudly. One source mutant
+is deliberately left out: rewriting the CLI arg-slice (`sys.argv[1:]`) is **not
+covered by the bank** and is out of scope — what's under test is the guardrail's
+decision logic, not its I/O plumbing. (Said plainly, not dressed up as
+"equivalent".)
 
 ### What's inside
 
@@ -121,10 +129,12 @@ imprime ENFERMO y sale 0 · (3) el banco con casos copiados de las propias regla
 ("contamos 5 puertas, había 6") · (5) el veredicto verde-pero-ciego que se
 compara consigo mismo.
 
-**Mutation testing** (`python -m guardianes mutar` → 11/11): el repo no *dice* que
-el banco tiene dientes, lo **demuestra** mutando los guardianes y exigiendo que el
-banco mate a cada mutante. Un mutante superviviente es un agujero del banco, y se
-reporta. Practica lo que predica.
+**Mutation testing** (`python -m guardianes mutar` → fault-injection 8/8 ·
+source-level 4/4): el repo no *dice* que el banco tiene dientes, lo **demuestra**
+mutando los guardianes y exigiendo que el banco mate a cada mutante. Los mutantes
+de fuente reescriben `guardian_hook.py` de verdad (vía `ast`), incluido tragarse
+el exit code en `main()` — el propio titular del repo, aplicado a sí mismo. Un
+mutante superviviente es un agujero del banco, y se reporta. Practica lo que predica.
 
 _Solo biblioteca estándar. Sin red, sin secretos, sin dependencias._
 

@@ -27,6 +27,17 @@ def test_every_injected_bug_is_caught():
         assert caught, f"bank did not catch: {name}"
 
 
-def test_mutation_score_is_perfect():
-    killed, total = mutador.mutation_score()
-    assert killed == total and total >= 8, f"surviving mutants: score {killed}/{total}"
+def test_source_mutants_all_killed():
+    src = mutador.source()
+    survivors = [r.name for r in src if not r.killed]
+    assert not survivors and len(src) >= 4, f"surviving source mutants: {survivors}"
+
+
+def test_main_is_covered_and_its_mutant_is_killed():
+    # the function that materialises the exit-code contract must be tested
+    assert any(r.name == "source:main-return-0" and r.killed for r in mutador.source())
+
+
+def test_no_mutant_survives_overall():
+    survivors = [r.name for r in mutador.ejecutar() if not r.killed]
+    assert not survivors, f"surviving mutants: {survivors}"

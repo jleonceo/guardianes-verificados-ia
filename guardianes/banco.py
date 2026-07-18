@@ -71,6 +71,11 @@ def run_bank(*, salud_teeth: bool = True, guardian_patterns=gh.SECRET_PATTERNS_V
     check("frescura_catches_drift",
           frescura_fn(4476, 4766) == gf.EXIT_VIOLATION and frescura_fn(4766, 4766) == gf.EXIT_OK)
 
+    # 9 · main() actually translates the verdict into the process exit code
+    #     (the function that MATERIALISES the contract — must be covered too)
+    check("main_translates_verdict",
+          gh.main(["password=hunter2"]) == gh.EXIT_VIOLATION and gh.main(["a normal line"]) == gh.EXIT_OK)
+
     return cases
 
 

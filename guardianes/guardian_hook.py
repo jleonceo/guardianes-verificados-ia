@@ -22,8 +22,7 @@ EXIT_VIOLATION = 2
 
 # v1 has a hole on purpose: it catches `password=` but misses `passwd=`/`pwd=`.
 # A bank written *from this list* would be circular and pass while the hole
-# stays open. See tests/banco_guardianes.py for the independent bank that
-# catches it.
+# stays open. See guardianes/banco.py for the independent bank that catches it.
 SECRET_PATTERNS_V1 = [
     re.compile(r"password\s*=\s*\S+", re.IGNORECASE),
     re.compile(r"AKIA[0-9A-Z]{16}"),  # AWS-access-key shape
