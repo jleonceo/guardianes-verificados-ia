@@ -41,3 +41,36 @@ def test_main_is_covered_and_its_mutant_is_killed():
 def test_no_mutant_survives_overall():
     survivors = [r.name for r in mutador.ejecutar() if not r.killed]
     assert not survivors, f"surviving mutants: {survivors}"
+
+
+def _run_standalone() -> int:
+    """Run every test_* in this module without pytest, and report the count.
+
+    The docstring at the top has always claimed `pytest` OR a manual run both
+    work. Until now the manual run did nothing at all: no `__main__` block meant
+    `python tests/test_contrato.py` imported the module, defined the functions
+    and exited 0 without asserting anything. A file that exits green having run
+    zero tests is worse than one that fails, because the zero is invisible.
+    """
+    tests = sorted((name, fn) for name, fn in globals().items()
+                   if name.startswith("test_") and callable(fn))
+    failed = []
+    for name, fn in tests:
+        try:
+            fn()
+            print(f"  [PASS] {name}")
+        except AssertionError as e:
+            failed.append(name)
+            print(f"  [FAIL] {name}: {e}")
+    print("-" * 60)
+    if failed:
+        print(f"FAILURES PRESENT ({len(failed)} of {len(tests)} checks)")
+        return 1
+    print(f"{len(tests)}/{len(tests)} checks PASS - ALL GREEN")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(_run_standalone())
