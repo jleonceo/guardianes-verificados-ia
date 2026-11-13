@@ -3,6 +3,8 @@ English version: [README.en.md](README.en.md)
 # guardianes-verificados-ia
 ### ¿Quién vigila a los guardianes?
 
+[![ci](https://github.com/jleonceo/guardianes-verificados-ia/actions/workflows/ci.yml/badge.svg)](https://github.com/jleonceo/guardianes-verificados-ia/actions/workflows/ci.yml)
+
 Casi todas las herramientas de «guardarraíles» para IA comprueban lo que sale del modelo. Esta comprueba **los guardarraíles**. Si un detector encuentra un problema pero no lo bloquea, no protege nada por muy bien que lo detecte.
 
 El sistema que rodea a un guardián no lee su texto. Lee su **código de salida**. Un `0` quiere decir «limpio, pasa». Un `2` quiere decir «hay una violación, bloquéalo». Un guardián que detecta la violación pero se olvida de devolver el `2` canta verde estando roto y nadie se entera.

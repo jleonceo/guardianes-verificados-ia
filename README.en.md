@@ -3,6 +3,8 @@ Versión en español: [README.md](README.md)
 # guardianes-verificados-ia
 ### Who guards the guardrails?
 
+[![ci](https://github.com/jleonceo/guardianes-verificados-ia/actions/workflows/ci.yml/badge.svg)](https://github.com/jleonceo/guardianes-verificados-ia/actions/workflows/ci.yml)
+
 Almost every AI "guardrail" tool checks what comes out of the model. This one checks **the guardrails**. If a detector finds a problem but does not block it, it protects nothing, however well it detects.
 
 The system around a guardrail does not read its text. It reads its **exit code**. A `0` means "clean, let it through". A `2` means "there is a violation, block it". A guardrail that detects the violation but forgets to return the `2` reports green while broken, and nobody finds out.
