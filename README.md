@@ -47,11 +47,14 @@ Los incidentes 1, 2 y 5 son versiones en miniatura de fallos con fecha de un sis
 
 ```mermaid
 flowchart LR
-    I[entrada] --> G{guardián}
-    G -- limpio --> Z["exit 0 · pasa"]
-    G -- violación --> T["exit 2 · BLOQUEA"]
-    Z --> H[el harness / la CI lee el código de salida]
+    I[Entrada] --> G{Guardián}
+    G -->|Limpio| Z[exit 0<br/>pasa]
+    G -->|Violación| T[exit 2<br/>bloquea]
+    Z --> H[El harness o la CI<br/>lee el código de salida]
     T --> H
+    style G fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style Z fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style T fill:#ffebee,stroke:#c62828,color:#b71c1c
 ```
 
 **Mutation testing: que practique lo que predica.** El repo no se limita a decir que su banco tiene dientes: muta los guardianes y exige que el banco mate a cada mutante. Un mutante que sobrevive es un agujero del banco y se reporta.

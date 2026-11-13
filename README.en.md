@@ -47,11 +47,14 @@ Incidents 1, 2 and 5 are miniature versions of dated failures in a real system. 
 
 ```mermaid
 flowchart LR
-    I[input] --> G{guardrail}
-    G -- clean --> Z["exit 0 · pass"]
-    G -- violation --> T["exit 2 · BLOCK"]
-    Z --> H[the harness / the CI reads the exit code]
+    I[Input] --> G{Guardrail}
+    G -->|Clean| Z[exit 0<br/>pass]
+    G -->|Violation| T[exit 2<br/>blocks]
+    Z --> H[The harness or the CI<br/>reads the exit code]
     T --> H
+    style G fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style Z fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style T fill:#ffebee,stroke:#c62828,color:#b71c1c
 ```
 
 **Mutation testing: practising what it preaches.** The repo does not just claim that its bank has teeth: it mutates the guardrails and demands that the bank kills every mutant. A mutant that survives is a hole in the bank and gets reported.
